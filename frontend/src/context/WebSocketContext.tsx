@@ -19,8 +19,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     let socket: WebSocket | null = null;
 
     const connectWS = () => {
+      const customWsUrl = import.meta.env.VITE_WS_URL;
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/api/v1/ws/live-feed`;
+      const wsUrl = customWsUrl || `${wsProtocol}//${window.location.hostname}:8000/api/v1/ws/live-feed`;
 
       socket = new WebSocket(wsUrl);
 
@@ -44,8 +45,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       socket.onclose = () => {
         setIsConnected(false);
-        // Auto-reconnect after 3s
-        setTimeout(connectWS, 3000);
+        // Auto-reconnect after 4s
+        setTimeout(connectWS, 4000);
       };
 
       socket.onerror = () => {

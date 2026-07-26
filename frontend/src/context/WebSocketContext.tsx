@@ -21,37 +21,46 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const connectWS = () => {
       const customWsUrl = import.meta.env.VITE_WS_URL;
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = customWsUrl || `${wsProtocol}//${window.location.hostname}:8000/api/v1/ws/live-feed`;
+      
+      // Compute production vs local wsUrl safely
+      let defaultWsUrl = `${wsProtocol}//${window.location.host}/api/v1/ws/live-feed`;
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        defaultWsUrl = `${wsProtocol}//${window.location.hostname}:8000/api/v1/ws/live-feed`;
+      }
 
-      socket = new WebSocket(wsUrl);
+      const wsUrl = customWsUrl || defaultWsUrl;
 
-      socket.onopen = () => {
-        setIsConnected(true);
-        console.log("Connected to KSP-CopSight WebSocket Live Sync Engine");
-      };
+      try {
+        socket = new WebSocket(wsUrl);
 
-      socket.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          setLatestEvent(payload);
+        socket.onopen = () => {
+          setIsConnected(true);
+          console.log("Connected to KSP-CopSight WebSocket Live Sync Engine");
+        };
 
-          if (payload.event === 'INCIDENT_CREATED' && payload.data) {
-            setLiveIncidents((prev) => [payload.data as Incident, ...prev]);
+        socket.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            setLatestEvent(payload);
+
+            if (payload.event === 'INCIDENT_CREATED' && payload.data) {
+              setLiveIncidents((prev) => [payload.data as Incident, ...prev]);
+            }
+          } catch (err) {
+            console.error("Failed to parse WebSocket message:", err);
           }
-        } catch (err) {
-          console.error("Failed to parse WebSocket message:", err);
-        }
-      };
+        };
 
-      socket.onclose = () => {
-        setIsConnected(false);
-        // Auto-reconnect after 4s
-        setTimeout(connectWS, 4000);
-      };
+        socket.onclose = () => {
+          setIsConnected(false);
+        };
 
-      socket.onerror = () => {
+        socket.onerror = () => {
+          setIsConnected(false);
+        };
+      } catch (err) {
         setIsConnected(false);
-      };
+      }
     };
 
     connectWS();
